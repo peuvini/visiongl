@@ -46,8 +46,8 @@ OUTPUT_LIBDIR      = -L $(OUTPUT_LIBPATH)
 
 WITH_CUDA = 0
 WITH_OPENCL = 1
-WITH_OPENCV = 0
-WITH_GDCM = 0
+WITH_OPENCV = 1
+WITH_GDCM = 1
 WITH_DCMTK = 0
 WITH_TIFF = 1
 
@@ -57,16 +57,16 @@ endif
 
 ifeq ($(WITH_OPENCV), 1)
 	OPENCV_DEF        = -D__OPENCV__
-	OPENCV_PATH        = /usr/local/opencv
-	OPENCV_PATH        = /home/ddantas/bin/opencv_2.4.9_without_cuda_opencl/
-	OPENCV_INCLUDEPATH = $(OPENCV_PATH)/include/
-	OPENCV_LIBPATH     = $(OPENCV_PATH)/lib
-	OPENCV_INCLUDEDIR  = -I $(OPENCV_INCLUDEPATH)
-	OPENCV_LIBDIR      = -L $(OPENCV_LIBPATH)
-	OPENCV_LIBRARIES   = -lopencv_highgui -lopencv_core -lopencv_imgproc -lopencv_legacy
+	OPENCV_PATH       = /usr/local
+	OPENCV_INCLUDEPATH = $(OPENCV_PATH)/include/opencv4
+	OPENCV_LIBPATH    = $(OPENCV_PATH)/lib
+	OPENCV_INCLUDEDIR = -I $(OPENCV_INCLUDEPATH)
+	OPENCV_LIBDIR     = -L $(OPENCV_LIBPATH)
+	OPENCV_LIBRARIES  = -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs
 else
 	#OPENCV_FILES       = src/vglOpencv.cpp
 endif
+
 
 ifeq ($(WITH_CUDA), 1)
 	CUDA_DEF         = -D__CUDA__
@@ -86,14 +86,15 @@ else
 endif
 
 ifeq ($(WITH_OPENCL), 1)
-        OPENCL_PATH        = /opt/intel/opencl-1.2-4.4.0.117/lib64/
-        OPENCL_PATH        = /opt/AMDAPPSDK-2.9-1/
+		OPENCL_DEF        = -D__OPENCL__
+        # OPENCL_PATH        = /opt/intel/opencl-1.2-4.4.0.117/lib64/
+        OPENCL_PATH        ?= /opt/AMDAPPSDK-2.9-1/
         #OPENCL_PATH        = /usr/local/cuda/
         OPENCL_INCLUDEPATH = $(OPENCL_PATH)/include/
         OPENCL_LIBPATH     = $(OPENCL_PATH)/lib/x86_64
         #OPENCL_LIBPATH     = $(OPENCL_PATH)/lib64
         #OPENCL_LIBPATH     = /usr/lib/
-        OPENCL_INCLUDEDIR  = -I $(OPENCL_INCLUDEPATH)
+        OPENCL_INCLUDEDIR =  -I $(OPENCL_INCLUDEPATH)
         OPENCL_LIBDIR      = -L $(OPENCL_LIBPATH)
         OPENCL_LIBRARIES   = -lOpenCL
         OPENCL_FILES = src/cl2cpp_shaders.cpp src/vglClFunctions.cpp src/vglClImage.cpp src/cl2cpp_MM.cpp src/cl2cpp_ND.cpp src/cl2cpp_BIN.cpp
@@ -116,15 +117,15 @@ ifeq ($(WITH_GDCM), 1)
 endif
 
 ifeq ($(WITH_DCMTK), 1)
-	DCMTK_DEF         = -D__DCMTK__
-	DCMTK_PATH        = /usr/local/dcmtk
+	DCMTK_DEF        = -D__DCMTK__
+	DCMTK_PATH       = /usr/local/dcmtk
 	DCMTK_INCLUDEPATH = $(DCMTK_PATH)/include
 	DCMTK_LIBPATH     = $(DCMTK_PATH)/lib
 	DCMTK_INCLUDEDIR  = -I $(DCMTK_INCLUDEPATH)
 	DCMTK_LIBDIR      = -L $(DCMTK_LIBPATH)
-	DCMTK_LIBRARIES   = -ldcmjpeg -lijg8 -lijg12  -lijg16 -ldcmimage -ldcmpstat -ldcmimgle -ldcmqrdb -ldcmnet -ldcmdata -loflog -lofstd -lz -lpthread 
-        #-ltiff -lpng
+	DCMTK_LIBRARIES   = -ldcmdata -ldcmimgle -ldcmimage -ldcmnet -ldcmqrdb -ldcmjpeg -lz -lwrap -lrt
 endif
+
 
 ifeq ($(WITH_TIFF), 1)
 	TIFF_DEF        = -D__TIFF__
@@ -221,10 +222,12 @@ LINUXAMD64_DEMO_FRACTAL = $(CC) $(COMPILER_FLAGS) \
                          $(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_CAM = $(CC) $(COMPILER_FLAGS) \
-                        -o $(OUTPUT_BINPATH)/demo_$(CAM_NAME) \
-                         src/demo/$(CAM_NAME).cpp \
-                         -lvisiongl \
-                         $(LINUXAMD64_DIRS_LIBS)
+    -Wl,-rpath,'$$ORIGIN/../lib' \
+    -o $(OUTPUT_BINPATH)/demo_$(CAM_NAME) \
+    src/demo/$(CAM_NAME).cpp \
+    -lvisiongl \
+    $(LINUXAMD64_DIRS_LIBS)
+
 
 LINUXAMD64_DEMO_CUDA = $(CC) $(COMPILER_FLAGS) -D__CUDA__ \
                          -o $(OUTPUT_BINPATH)/demo_$(CUDA_NAME) \
@@ -234,27 +237,44 @@ LINUXAMD64_DEMO_CUDA = $(CC) $(COMPILER_FLAGS) -D__CUDA__ \
 
 LINUXAMD64_DEMO_GDCM = $(CC) $(COMPILER_FLAGS) -D__GDCM__ \
                          -o $(OUTPUT_BINPATH)/demo_$(GDCM_NAME) \
-                          src/demo/$(GDCM_NAME).cpp \
+                         src/demo/$(GDCM_NAME).cpp src/vglGdcmIo.cpp \
                          -lvisiongl \
-                          $(LINUXAMD64_DIRS_LIBS) \
+                         $(GDCM_DEF) $(GDCM_INCLUDEDIR) $(GDCM_LIBDIR) $(GDCM_LIBRARIES) \
+                         $(LINUXAMD64_DIRS_LIBS)
+
 
 LINUXAMD64_DEMO_DCMTK = $(CC) $(COMPILER_FLAGS) -D__DCMTK__ \
                          -o $(OUTPUT_BINPATH)/demo_$(DCMTK_NAME) \
-                          src/demo/$(DCMTK_NAME).cpp \
+                         src/demo/$(DCMTK_NAME).cpp src/vglDcmtkIo.cpp \
                          -lvisiongl \
-                          $(LINUXAMD64_DIRS_LIBS) \
+                         $(DCMTK_DEF) $(DCMTK_INCLUDEDIR) $(DCMTK_LIBDIR) $(DCMTK_LIBRARIES) \
+                         $(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_TIFF = $(CC) $(COMPILER_FLAGS) \
                         -o $(OUTPUT_BINPATH)/demo_$(TIFF_NAME) \
-                         src/demo/$(TIFF_NAME).cpp \
-                         -lvisiongl \
-                         $(LINUXAMD64_DIRS_LIBS)
+                        src/demo/$(TIFF_NAME).cpp \
+                        -L./lib -Wl,-rpath=$(pwd)/lib \
+                        -lvisiongl \
+                        $(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_IO = $(CC) $(COMPILER_FLAGS) \
-                        -o $(OUTPUT_BINPATH)/demo_$(IO_NAME) \
-                         src/demo/$(IO_NAME).cpp \
-                         -lvisiongl \
-                         $(LINUXAMD64_DIRS_LIBS)
+                     -o $(OUTPUT_BINPATH)/demo_$(IO_NAME) \
+                     src/demo/$(IO_NAME).cpp \
+                     -lvisiongl \
+                     -I ./src \
+                     -I /usr/local/include/opencv4 \
+                     -L ./lib \
+                     -L /usr/X11R6/lib \
+                     -L /usr/local/lib \
+                     -lopencv_core \
+                     -lopencv_imgproc \
+                     -lopencv_highgui \
+                     -lopencv_videoio \
+                     -lopencv_imgcodecs \
+                     -lGLEW -lGLU -lGL -lglut \
+                     -D__OPENCL__ -I /opt/AMDAPPSDK-2.9-1//include/ -L /opt/AMDAPPSDK-2.9-1//lib/x86_64 -lOpenCL \
+                     -D__TIFF__ -I /usr/include/x86_64-linux-gnu/ -L /usr/lib/x86_64-linux-gnu/ -ltiff
+
 
 LINUXAMD64_DEMO_BIN = $(CC) $(COMPILER_FLAGS) \
                         -o $(OUTPUT_BINPATH)/demo_$(BIN_NAME) \
@@ -455,19 +475,19 @@ rundemofrac:
 	cd $(OUTPUT_BINPATH); ./demo_$(FRACTAL_NAME)
 
 rundemocam:
-	cd $(OUTPUT_BINPATH); ./demo_$(CAM_NAME)
+	cd $(OUTPUT_BINPATH); ./demo_$(CAM_NAME)	
 
 rundemocuda:
 	cd $(OUTPUT_BINPATH); ./demo_$(CUDA_NAME) ../images/lena_std.tif /tmp/outputcuda.pgm
 
 rundemogdcm:
-	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) ../images/dicom/0003.dcm /tmp/outputgdcm.dcm
-	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) ../images/dicom/esopecho.dcm /tmp/outputgdcmrgb.dcm -c
-	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) ../images/dicom/I_000032.dcm /tmp/outputgdcmybr.dcm -c
-	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) ../images/dicom/0003.dcm.%d.PGM /tmp/outputgdcmheader.dcm 0 3
-	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) ../images/dicom/I_000003.dcm.%d.PGM /tmp/outputgdcmheadercor.dcm 0 3 -c
-	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) ../images/dicom/E1154S7I_16bit.dcm /tmp/outputgdcm16_compress.dcm -c
-	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) ../images/dicom/E1154S7I_16bit.dcm /tmp/outputgdcm16.dcm
+	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/dicom/0003.dcm /tmp/outputgdcm.dcm
+	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/dicom/esopecho.dcm /tmp/outputgdcmrgb.dcm -c
+	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/dicom/I_000032.dcm /tmp/outputgdcmybr.dcm -c
+	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/dicom/0003.dcm.%d.PGM /tmp/outputgdcmheader.dcm 0 3
+	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/dicom/I_000003.dcm.%d.PGM /tmp/outputgdcmheadercor.dcm 0 3 -c
+	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/dicom/E1154S7I_16bit.dcm /tmp/outputgdcm16_compress.dcm -c
+	cd $(OUTPUT_BINPATH); ./demo_$(GDCM_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/dicom/E1154S7I_16bit.dcm /tmp/outputgdcm16.dcm
 
 rundemodcmtk:
 	cd $(OUTPUT_BINPATH); ./demo_$(DCMTK_NAME) ../images/dicom/0003.dcm /tmp/outputdcmtk.dcm -c
@@ -479,15 +499,15 @@ rundemodcmtk:
 	cd $(OUTPUT_BINPATH); ./demo_$(DCMTK_NAME) ../images/dicom/E1154S7I_16bit.dcm /tmp/outputdcmtk16.dcm
 
 rundemotiff:
-	cd $(OUTPUT_BINPATH); ./demo_$(TIFF_NAME) ../images/tif/E1154S7I_3d.tif /tmp/demo_tif_out.tif
+	cd $(OUTPUT_BINPATH); ./demo_$(TIFF_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/tif/E1154S7I_3d.tif /tmp/demo_tif_out.tif
 
 rundemoio:
-	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) ../images/lena_std.tif /tmp/lena_std.tif -1
-	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) ../images/lena_gray.tif /tmp/lena_gray.tif -1
-	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) ../images/tif/E1154S7I_001.tif /tmp/E1154S7I_001.tif -1
+	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/lena_std.tif /tmp/lena_std.tif -1
+	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/lena_gray.tif /tmp/lena_gray.tif -1
+	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/tif/E1154S7I_001.tif /tmp/E1154S7I_001.tif -1
 
-	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) ../images/lena_std.tif /tmp/lena_std.ppm -1
-	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) ../images/lena_gray.tif /tmp/lena_gray.pgm -1
+	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/lena_std.tif /tmp/lena_std.ppm -1
+	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/lena_gray.tif /tmp/lena_gray.pgm -1
 
 	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) /tmp/lena_std.ppm /tmp/lena_std_UNCHANGED.ppm -1
 	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) /tmp/lena_gray.pgm /tmp/lena_gray_UNCHANGED.pgm -1
@@ -499,8 +519,8 @@ rundemoio:
 	cd $(OUTPUT_BINPATH); ./demo_$(IO_NAME) /tmp/lena_gray.pgm /tmp/lena_gray_BGR.ppm 1
 
 rundemobin:
-	cd $(OUTPUT_BINPATH); ./demo_$(BIN_NAME) ../images/test_mm.pgm /tmp 0
-	#cd $(OUTPUT_BINPATH); ./demo_$(BIN_NAME) ../images/lena_std.ppm /tmp 0
+	cd $(OUTPUT_BINPATH); ./demo_$(BIN_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/test_mm.pgm /tmp 0
+	#cd $(OUTPUT_BINPATH); ./demo_$(BIN_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/lena_std.ppm /tmp 0
 
 rundemobinconway:
 	cd $(OUTPUT_BINPATH); ./demo_$(BIN_NAME) ../images/test_conway.pgm /tmp 40
@@ -514,12 +534,12 @@ rundemokey:
 
 
 rundemobenchmark:
-	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CV_NAME) ../images/lena_std.tif 10 /tmp
-	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CVOCL_NAME) ../images/lena_std.tif 10 /tmp
-	cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CL_NAME) ../images/lena_std.tif 1 /tmp
-	cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CL3D_NAME) ../images/dicom/0003.dcm.%d.PGM 0 16 1 /tmp
-	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_MM_NAME) ../images/01_test.tif 10 /tmp
-	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_FUZZYTOPHAT_NAME) ../images/01_test.tif 10 /tmp
+	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CV_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/lena_std.tif 10 /tmp
+	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CVOCL_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/lena_std.tif 10 /tmp
+	cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CL_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/lena_std.tif 1 /tmp
+	cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CL3D_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/dicom/0003.dcm.%d.PGM 0 16 1 /tmp
+	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_MM_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/01_test.tif 10 /tmp
+	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_FUZZYTOPHAT_NAME) /home/peuvini/Documentos/ddantas/visiongl/visiongl_images/01_test.tif 10 /tmp
 
 STEPS=100
 rundemobenchmarkclnd:

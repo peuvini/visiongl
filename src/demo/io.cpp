@@ -1,16 +1,10 @@
-#include <vglImage.h>
-
-//IplImage, cvLoadImage
-#ifdef __OPENCV__
-  #include <opencv2/highgui/highgui_c.h>
-#else
-  #include <vglOpencv.h>
-#endif
-
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <cstdlib>
 
 int main(int argc, char *argv[])
 {
-  char* usage = (char*) "\n\
+    const char* usage = "\n\
     This program reads a file and saves a copy. Usage is as follows:\n\
 \n\
     demo_io <input file> <output file> <option>\n\
@@ -20,34 +14,43 @@ int main(int argc, char *argv[])
      1 -> Load image as BGR.\n\
 \n";
 
-  if (argc < 4)
-  {
-    printf("%s", usage);
-    exit(1);
-  }
+    if (argc < 4)
+    {
+        std::cerr << usage;
+        return 1;
+    }
 
-  char *inFilename = argv[1]; // name of the input file
-  char *outFilename = argv[2]; // name of the output file
-  int option = atoi(argv[3]); // color option
+    const std::string inFilename = argv[1];  // Nome do arquivo de entrada
+    const std::string outFilename = argv[2]; // Nome do arquivo de saída
+    int option = std::atoi(argv[3]);         // Opção de cor
 
-  IplImage* iplImage;
+    // Escolha do modo de carregamento
+    int flags = cv::IMREAD_UNCHANGED; // Default: Carrega "as is"
+    switch (option)
+    {
+        case 0: flags = cv::IMREAD_GRAYSCALE; break; // Escala de cinza
+        case 1: flags = cv::IMREAD_COLOR;    break;  // BGR
+        case -1: break; // IMREAD_UNCHANGED já é o comportamento padrão
+        default:
+            std::cerr << "Opção inválida! Usando default (Load as is).\n";
+            break;
+    }
 
-  printf("\noption = %d\n\n", option);
-  int i;
-  switch(option)
-  {
-     case -1:
-     case 0:
-     case 1:
-       iplImage = cvLoadImage(inFilename, option);
-       i = cvSaveImage(outFilename, iplImage);
-       break;
+    // Carrega a imagem com base na opção
+    cv::Mat image = cv::imread(inFilename, flags);
+    if (image.empty())
+    {
+        std::cerr << "Erro: Não foi possível carregar o arquivo de entrada: " << inFilename << "\n";
+        return 1;
+    }
 
-     default:
-       iplImage = cvLoadImage(inFilename);
-       i = cvSaveImage(outFilename, iplImage);
-       break;
-  }
-  return 0;
-  
+    // Salva a imagem no arquivo de saída
+    if (!cv::imwrite(outFilename, image))
+    {
+        std::cerr << "Erro: Não foi possível salvar a imagem no arquivo de saída: " << outFilename << "\n";
+        return 1;
+    }
+
+    std::cout << "Imagem salva com sucesso no arquivo: " << outFilename << "\n";
+    return 0;
 }
