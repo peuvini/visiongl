@@ -24,4 +24,3 @@ int convertDepthVglToGdcm(int vglDepth);
 
 #endif
 
-

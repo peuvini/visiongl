@@ -1,16 +1,12 @@
-#include <vglImage.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
 
-//IplImage, cvLoadImage
-#ifdef __OPENCV__
-  #include <opencv2/highgui/highgui_c.h>
-#else
-  #include <vglOpencv.h>
-#endif
-
+using namespace cv;
 
 int main(int argc, char *argv[])
 {
-  char* usage = (char*) "\n\
+    char* usage = (char*) "\n\
     This program reads a file and saves a copy. Usage is as follows:\n\
 \n\
     demo_io <input file> <output file> <option>\n\
@@ -20,34 +16,46 @@ int main(int argc, char *argv[])
      1 -> Load image as BGR.\n\
 \n";
 
-  if (argc < 4)
-  {
-    printf("%s", usage);
-    exit(1);
-  }
+    if (argc < 4)
+    {
+        printf("%s", usage);
+        exit(1);
+    }
 
-  char *inFilename = argv[1]; // name of the input file
-  char *outFilename = argv[2]; // name of the output file
-  int option = atoi(argv[3]); // color option
+    char *inFilename = argv[1];
+    char *outFilename = argv[2];
+    int option = atoi(argv[3]);
 
-  IplImage* iplImage;
+    Mat img;  // Agora Mat é reconhecido
 
-  printf("\noption = %d\n\n", option);
-  int i;
-  switch(option)
-  {
-     case -1:
-     case 0:
-     case 1:
-       iplImage = cvLoadImage(inFilename, option);
-       i = cvSaveImage(outFilename, iplImage);
-       break;
+    switch(option)
+    {
+        case -1:
+            img = imread(inFilename, IMREAD_UNCHANGED);
+            break;
+        case 0:
+            img = imread(inFilename, IMREAD_GRAYSCALE);
+            break;
+        case 1:
+            img = imread(inFilename, IMREAD_COLOR);
+            break;
+        default:
+            img = imread(inFilename);
+            break;
+    }
 
-     default:
-       iplImage = cvLoadImage(inFilename);
-       i = cvSaveImage(outFilename, iplImage);
-       break;
-  }
-  return 0;
-  
+    if (img.empty())
+    {
+        printf("Erro ao carregar a imagem: %s\n", inFilename);
+        return -1;
+    }
+
+    bool success = imwrite(outFilename, img);
+    if (!success)
+    {
+        printf("Erro ao salvar a imagem: %s\n", outFilename);
+        return -1;
+    }
+
+    return 0;
 }

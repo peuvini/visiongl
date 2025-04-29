@@ -128,4 +128,3 @@ void vglClSwapRgb(VglImage* src, VglImage* dst);
     the output is 0, else, the output is top. Result is stored in dst image.
   */
 void vglClThreshold(VglImage* src, VglImage* dst, float thresh, float top = 1.0);
-

@@ -1802,4 +1802,3 @@ void vglClThreshold(VglImage* src, VglImage* dst, float thresh, float top)
 
   vglSetContext(dst, VGL_CL_CONTEXT);
 }
-

@@ -69,9 +69,10 @@ enum
 #define IPL_DEPTH_16U   16
 #define IPL_DEPTH_32F   32
 
-#define IPL_DEPTH_8S  (IPL_DEPTH_SIGN| 8)
-#define IPL_DEPTH_16S (IPL_DEPTH_SIGN|16)
-#define IPL_DEPTH_32S (IPL_DEPTH_SIGN|32)
+
+#define IPL_DEPTH_8S  (static_cast<int>(0x80000000) | 8)
+#define IPL_DEPTH_16S (static_cast<int>(0x80000000U) | 16)
+#define IPL_DEPTH_32S (static_cast<int>(0x80000000U) | 32)
 
 typedef struct _IplImage
 {

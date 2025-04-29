@@ -5486,4 +5486,3 @@ void vglZoom(VglImage* src, VglImage* dst, float factor){
 
   vglSetContext(dst, VGL_GL_CONTEXT);
 }
-

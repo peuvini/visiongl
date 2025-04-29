@@ -46,9 +46,9 @@ OUTPUT_LIBDIR      = -L $(OUTPUT_LIBPATH)
 
 WITH_CUDA = 0
 WITH_OPENCL = 1
-WITH_OPENCV = 0
+WITH_OPENCV = 1
 WITH_GDCM = 0
-WITH_DCMTK = 0
+WITH_DCMTK = 1
 WITH_TIFF = 1
 
 ifeq ($(WITH_OPENCL), 1)
@@ -57,13 +57,12 @@ endif
 
 ifeq ($(WITH_OPENCV), 1)
 	OPENCV_DEF        = -D__OPENCV__
-	OPENCV_PATH        = /usr/local/opencv
-	OPENCV_PATH        = /home/ddantas/bin/opencv_2.4.9_without_cuda_opencl/
-	OPENCV_INCLUDEPATH = $(OPENCV_PATH)/include/
-	OPENCV_LIBPATH     = $(OPENCV_PATH)/lib
-	OPENCV_INCLUDEDIR  = -I $(OPENCV_INCLUDEPATH)
-	OPENCV_LIBDIR      = -L $(OPENCV_LIBPATH)
-	OPENCV_LIBRARIES   = -lopencv_highgui -lopencv_core -lopencv_imgproc -lopencv_legacy
+	OPENCV_PATH       = /usr/local
+	OPENCV_INCLUDEPATH = $(OPENCV_PATH)/include/opencv4
+	OPENCV_LIBPATH    = $(OPENCV_PATH)/lib
+	OPENCV_INCLUDEDIR = -I $(OPENCV_INCLUDEPATH)
+	OPENCV_LIBDIR     = -L $(OPENCV_LIBPATH)
+	OPENCV_LIBRARIES  = -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs
 else
 	#OPENCV_FILES       = src/vglOpencv.cpp
 endif
@@ -87,7 +86,7 @@ endif
 
 ifeq ($(WITH_OPENCL), 1)
         OPENCL_PATH        = /opt/intel/opencl-1.2-4.4.0.117/lib64/
-        OPENCL_PATH        = /opt/AMDAPPSDK-2.9-1/
+        # OPENCL_PATH        = /opt/AMDAPPSDK-2.9-1/
         #OPENCL_PATH        = /usr/local/cuda/
         OPENCL_INCLUDEPATH = $(OPENCL_PATH)/include/
         OPENCL_LIBPATH     = $(OPENCL_PATH)/lib/x86_64
@@ -96,9 +95,9 @@ ifeq ($(WITH_OPENCL), 1)
         OPENCL_INCLUDEDIR  = -I $(OPENCL_INCLUDEPATH)
         OPENCL_LIBDIR      = -L $(OPENCL_LIBPATH)
         OPENCL_LIBRARIES   = -lOpenCL
-        OPENCL_FILES = src/cl2cpp_shaders.cpp src/vglClFunctions.cpp src/vglClImage.cpp src/cl2cpp_MM.cpp src/cl2cpp_ND.cpp src/cl2cpp_BIN.cpp
-
-        OPENGL_INCLUDEPATH = $(OPENCL_INCLUDEPATH)
+        OPENCL_FILES = src/cl2cpp_shaders.cpp src/vglClFunctions.cpp src/vglClImage.cpp src/cl2cpp_MM.cpp src/cl2cpp_ND.cpp src/cl2cpp_BIN.cpp 
+        OPENCL_FILES += src/cl2cpp_vinicius.cpp
+		OPENGL_INCLUDEPATH = $(OPENCL_INCLUDEPATH)
         OPENGL_INCLUDEDIR  = $(OPENCL_INCLUDEDIR)
 else
         OPENGL_INCLUDEPATH = /usr/include/
@@ -112,18 +111,17 @@ ifeq ($(WITH_GDCM), 1)
 	GDCM_LIBPATH     = $(GDCM_PATH)/lib
 	GDCM_INCLUDEDIR  = -I $(GDCM_INCLUDEPATH)
 	GDCM_LIBDIR      = -L $(GDCM_LIBPATH)
-	GDCM_LIBRARIES   = -lgdcmcharls -lgdcmCommon -lgdcmDICT -lgdcmDSED -lgdcmexpat -lgdcmIOD -lgdcmjpeg8 -lgdcmjpeg12 -lgdcmjpeg16 -lgdcmMEXD -lgdcmMSFF -lgdcmopenjpeg -lgdcmuuid -lgdcmzlib -lsocketxx
+	GDCM_LIBRARIES   = -lgdcmcharls -lgdcmCommon -lgdcmDICT -lgdcmDSED -lgdcmIOD -lgdcmjpeg8 -lgdcmjpeg12 -lgdcmjpeg16 -lgdcmMEXD -lgdcmMSFF -lgdcmopenjpeg -lgdcmuuid -lgdcmzlib -lsocketxx -lgdcmexpat -lexpat
 endif
 
 ifeq ($(WITH_DCMTK), 1)
-	DCMTK_DEF         = -D__DCMTK__
-	DCMTK_PATH        = /usr/local/dcmtk
+	DCMTK_DEF        = -D__DCMTK__
+	DCMTK_PATH       = /usr/local/dcmtk
 	DCMTK_INCLUDEPATH = $(DCMTK_PATH)/include
 	DCMTK_LIBPATH     = $(DCMTK_PATH)/lib
 	DCMTK_INCLUDEDIR  = -I $(DCMTK_INCLUDEPATH)
 	DCMTK_LIBDIR      = -L $(DCMTK_LIBPATH)
-	DCMTK_LIBRARIES   = -ldcmjpeg -lijg8 -lijg12  -lijg16 -ldcmimage -ldcmpstat -ldcmimgle -ldcmqrdb -ldcmnet -ldcmdata -loflog -lofstd -lz -lpthread 
-        #-ltiff -lpng
+	DCMTK_LIBRARIES = -ldcmdata -ldcmimgle -ldcmimage -ldcmnet -ldcmqrdb -ldcmjpeg -lz -lwrap -lrt -llog4cplus -loflog -lofstd -lofstd -loflog
 endif
 
 ifeq ($(WITH_TIFF), 1)
@@ -182,7 +180,7 @@ LINUXAMD64_DIRS_LIBS =  $(INCLUDE_DIR) \
                         $(TIFF_INCLUDEDIR) \
                         $(TIFF_LIBDIR) \
                         $(TIFF_LIBRARIES) \
-
+						-Xlinker -rpath -Xlinker /usr/local/gdcm/lib
 
 LINUXAMD64_LIB = $(CC) $(COMPILER_FLAGS) \
                         -shared $(CUDA_OPTIONS) $(FPIC) \
@@ -221,10 +219,11 @@ LINUXAMD64_DEMO_FRACTAL = $(CC) $(COMPILER_FLAGS) \
                          $(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_CAM = $(CC) $(COMPILER_FLAGS) \
-                        -o $(OUTPUT_BINPATH)/demo_$(CAM_NAME) \
-                         src/demo/$(CAM_NAME).cpp \
-                         -lvisiongl \
-                         $(LINUXAMD64_DIRS_LIBS)
+						-Wl,-rpath,'$$ORIGIN/../lib' \
+						-o $(OUTPUT_BINPATH)/demo_$(CAM_NAME) \
+						src/demo/$(CAM_NAME).cpp \
+						-lvisiongl \
+						$(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_CUDA = $(CC) $(COMPILER_FLAGS) -D__CUDA__ \
                          -o $(OUTPUT_BINPATH)/demo_$(CUDA_NAME) \
@@ -234,15 +233,17 @@ LINUXAMD64_DEMO_CUDA = $(CC) $(COMPILER_FLAGS) -D__CUDA__ \
 
 LINUXAMD64_DEMO_GDCM = $(CC) $(COMPILER_FLAGS) -D__GDCM__ \
                          -o $(OUTPUT_BINPATH)/demo_$(GDCM_NAME) \
-                          src/demo/$(GDCM_NAME).cpp \
+                         src/demo/$(GDCM_NAME).cpp src/vglGdcmIo.cpp \
                          -lvisiongl \
-                          $(LINUXAMD64_DIRS_LIBS) \
+                         $(GDCM_DEF) $(GDCM_INCLUDEDIR) $(GDCM_LIBDIR) $(GDCM_LIBRARIES) \
+                         $(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_DCMTK = $(CC) $(COMPILER_FLAGS) -D__DCMTK__ \
                          -o $(OUTPUT_BINPATH)/demo_$(DCMTK_NAME) \
-                          src/demo/$(DCMTK_NAME).cpp \
+                         src/demo/$(DCMTK_NAME).cpp src/vglDcmtkIo.cpp \
                          -lvisiongl \
-                          $(LINUXAMD64_DIRS_LIBS) \
+                         $(DCMTK_DEF) $(DCMTK_INCLUDEDIR) $(DCMTK_LIBDIR) $(DCMTK_LIBRARIES) \
+                         $(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_TIFF = $(CC) $(COMPILER_FLAGS) \
                         -o $(OUTPUT_BINPATH)/demo_$(TIFF_NAME) \
@@ -251,10 +252,23 @@ LINUXAMD64_DEMO_TIFF = $(CC) $(COMPILER_FLAGS) \
                          $(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_IO = $(CC) $(COMPILER_FLAGS) \
-                        -o $(OUTPUT_BINPATH)/demo_$(IO_NAME) \
-                         src/demo/$(IO_NAME).cpp \
-                         -lvisiongl \
-                         $(LINUXAMD64_DIRS_LIBS)
+                     -o $(OUTPUT_BINPATH)/demo_$(IO_NAME) \
+                     src/demo/$(IO_NAME).cpp \
+                     -lvisiongl \
+                     -I ./src \
+                     -I /usr/local/include/opencv4 \
+                     -L ./lib \
+                     -L /usr/X11R6/lib \
+                     -L /usr/local/lib \
+                     -lopencv_core \
+                     -lopencv_imgproc \
+                     -lopencv_highgui \
+                     -lopencv_videoio \
+                     -lopencv_imgcodecs \
+                     -lGLEW -lGLU -lGL -lglut \
+                     -D__OPENCL__ -I /opt/AMDAPPSDK-2.9-1//include/ -L /opt/AMDAPPSDK-2.9-1//lib/x86_64 -lOpenCL \
+                     -D__TIFF__ -I /usr/include/x86_64-linux-gnu/ -L /usr/lib/x86_64-linux-gnu/ -ltiff
+
 
 LINUXAMD64_DEMO_BIN = $(CC) $(COMPILER_FLAGS) \
                         -o $(OUTPUT_BINPATH)/demo_$(BIN_NAME) \
@@ -275,7 +289,6 @@ LINUXAMD64_DEMO_KEY = $(CC) $(COMPILER_FLAGS) \
                          -I $(ROOTPATH)/src/demo/$(KEY_NAME)/ \
                          $(OPENCV_INCLUDEDIR) \
                          $(LINUXAMD64_DIRS_LIBS)
-
 
 ifeq ($(WITH_OPENCL), 1)
         LINUXAMD64_DEMO_BENCHMARK_CL = $(CC) $(COMPILER_FLAGS) \
@@ -328,6 +341,27 @@ ifeq ($(WITH_OPENCL), 1)
 
 endif
 
+LINUXAMD64_DEMO_BILATERAL = $(CC) $(COMPILER_FLAGS) \
+    -Wl,-rpath,$(abspath ./lib) -Wl,-rpath,/usr/local/gdcm/lib \
+    -o $(OUTPUT_BINPATH)/demo_bilateral \
+     src/demo/CL_VINICIUS/bilateral.cpp src/demo/timer.cpp \
+     -lvisiongl \
+     $(LINUXAMD64_DIRS_LIBS)
+
+LINUXAMD64_DEMO_ARITHMEAN = $(CC) $(COMPILER_FLAGS) \
+    -Wl,-rpath,$(abspath ./lib) -Wl,-rpath,/usr/local/gdcm/lib \
+    -o $(OUTPUT_BINPATH)/demo_arithmeticMean \
+    src/demo/CL_VINICIUS/arithmeticMean.cpp src/demo/timer.cpp \
+    -lvisiongl \
+    $(LINUXAMD64_DIRS_LIBS)
+
+LINUXAMD64_DEMO_GEOMEAN = $(CC) $(COMPILER_FLAGS) \
+    -Wl,-rpath,$(abspath ./lib) -Wl,-rpath,/usr/local/gdcm/lib \
+    -o $(OUTPUT_BINPATH)/demo_geometricMean \
+     src/demo/CL_VINICIUS/geometricMean.cpp src/demo/timer.cpp \
+     -lvisiongl \
+     $(LINUXAMD64_DIRS_LIBS)
+
 LINUXAMD64_DEMO_BENCHMARK_CV = $(CC) $(COMPILER_FLAGS) \
                         -o $(OUTPUT_BINPATH)/demo_$(BENCHMARK_CV_NAME) \
                          src/demo/$(BENCHMARK_CV_NAME).cpp src/demo/timer.cpp \
@@ -349,7 +383,6 @@ LINUXAMD64_DEMO_COLORDECONV = $(CC) $(COMPILER_FLAGS) \
 
 
 GENERATE_HEADER = cat $(INCLUDE_PATH)/vglHead.h $(INCLUDE_PATH)/vglImage.h $(INCLUDE_PATH)/vglCudaImage.h $(INCLUDE_PATH)/vglClImage.h $(INCLUDE_PATH)/vglGdcmIo.h $(INCLUDE_PATH)/vglDcmtkIo.h $(INCLUDE_PATH)/vglTiffIo.h $(INCLUDE_PATH)/vglContext.h $(INCLUDE_PATH)/vglSimpleBGModel.h $(INCLUDE_PATH)/glsl2cpp*.h $(INCLUDE_PATH)/kernel2cu*.h $(INCLUDE_PATH)/cl2cpp*.h $(INCLUDE_PATH)/vglClFunctions*.h $(INCLUDE_PATH)/iplImage*.h $(INCLUDE_PATH)/vglOpencv*.h $(INCLUDE_PATH)/vglTail.h $(INCLUDE_PATH)/vglDeconv.h > /tmp/$(BINARY_NAME).h; grep -v vglImage\.h /tmp/$(BINARY_NAME).h > $(OUTPUT_INCLUDEPATH)/$(BINARY_NAME).h
-
 
 all:
 	echo $(LD_LIBRARY_PATH)
@@ -427,6 +460,15 @@ demobenchmarkclbin:
 
 demobenchmarkclnd:
 	$(LINUXAMD64_DEMO_BENCHMARK_CLND)
+
+demobilateral:
+	$(LINUXAMD64_DEMO_BILATERAL) 
+
+demoarithmeticMean:
+	$(LINUXAMD64_DEMO_ARITHMEAN)
+
+demogeometricMean:
+	$(LINUXAMD64_DEMO_GEOMEAN)
 
 democolordeconv:
 	$(LINUXAMD64_DEMO_COLORDECONV)
@@ -555,9 +597,17 @@ rundemobenchmarkclbin:
 	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CLNDBIN_NAME) ../images/mitosis/mitosis-5d%04d.tif 0 335 $(STEPS) /tmp 0 0 2 168
 	#cd $(OUTPUT_BINPATH); ./demo_$(BENCHMARK_CLNDBIN_NAME) ../images/mitosis/mitosis-5d%04d.tif 0 335 $(STEPS) /tmp 0 0 2 24 7
 
+rundemobilateral:
+	cd $(OUTPUT_BINPATH); ./demo_bilateral ../images/lena_gray.tif ${STEPS} /tmp
+
+rundemoarithmeticMean:
+	cd $(OUTPUT_BINPATH); ./demo_arithmeticMean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noise.pgm /tmp 5
+
+rundemogeometricmean:
+	cd $(OUTPUT_BINPATH); ./demo_geometricMean images/lena_gray.tif /tmp
+
 rundemocolordeconv:
 	cd $(OUTPUT_BINPATH); ./demo_$(COLORDECONV_NAME) ../images/Emphysema_H_and_E.jpg 1 /tmp/image.%d.pgm 0.0 1.0 1.0 1.0 0.0 1.0 1.0 1.0 0.0
-
 cuda:
 	./perlModules/kernel2cu.pl -o src/kernel2cu_shaders src/CUDA/*.kernel
 
@@ -575,7 +625,8 @@ frag_diffeq:
 
 cl:
 	./perlModules/cl2cpp.pl -o src/cl2cpp_shaders -p CL src/CL/*.cl
-
+cl_vinicius:
+	./perlModules/cl2cpp.pl -o src/cl2cpp_vinicius -p CL_VINICIUS src/CL_VINICIUS/*.cl
 cl_nd:
 	./perlModules/cl2cpp.pl -o src/cl2cpp_ND -p CL_ND src/CL_ND/*.cl
 
@@ -587,13 +638,10 @@ cl_mm:
 
 cl_bin:
 	./perlModules/cl2cpp.pl -o src/cl2cpp_BIN -p CL_BIN src/CL_BIN/*.cl
-
 run:
 	cd $(OUTPUT_BINPATH); ./$(BINARY_NAME)
-
 runtestcam:
 	cd $(OUTPUT_BINPATH); ./$(TESTCAM_NAME)
-
 debug:
 	cd $(OUTPUT_BINPATH); ddd ./$(BINARY_NAME)
 
@@ -653,4 +701,3 @@ utils:
 
 runutils:
 	./src/demo/image_info images/lena_std.tif -p
-
