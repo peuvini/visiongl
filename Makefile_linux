@@ -340,6 +340,7 @@ ifeq ($(WITH_OPENCL), 1)
                          $(LINUXAMD64_DIRS_LIBS) \
 
 endif
+# rodar sudo cp lib/libvisiongl.so /usr/local/lib/
 
 LINUXAMD64_DEMO_BILATERAL = $(CC) $(COMPILER_FLAGS) \
     -Wl,-rpath,$(abspath ./lib) -Wl,-rpath,/usr/local/gdcm/lib \
@@ -361,6 +362,27 @@ LINUXAMD64_DEMO_GEOMEAN = $(CC) $(COMPILER_FLAGS) \
      src/demo/CL_VINICIUS/geometricMean.cpp src/demo/timer.cpp \
      -lvisiongl \
      $(LINUXAMD64_DIRS_LIBS)
+
+LINUXAMD64_DEMO_HARMONICMEAN = $(CC) $(COMPILER_FLAGS) \
+    -Wl,-rpath,$(abspath ./lib) -Wl,-rpath,/usr/local/gdcm/lib \
+    -o $(OUTPUT_BINPATH)/demo_harmonicMean \
+    src/demo/CL_VINICIUS/harmonicMean.cpp src/demo/timer.cpp \
+    -lvisiongl \
+    $(LINUXAMD64_DIRS_LIBS)
+
+LINUXAMD64_DEMO_CONTRAHARMONICMEAN = $(CC) $(COMPILER_FLAGS) \
+    -Wl,-rpath,$(abspath ./lib) -Wl,-rpath,/usr/local/gdcm/lib \
+    -o $(OUTPUT_BINPATH)/demo_chmean \
+    src/demo/CL_VINICIUS/chmean.cpp src/demo/timer.cpp \
+    -lvisiongl \
+    $(LINUXAMD64_DIRS_LIBS)
+
+LINUXAMD64_DEMO_LAPLACIANO = $(CC) $(COMPILER_FLAGS) \
+    -Wl,-rpath,$(abspath ./lib) -Wl,-rpath,/usr/local/gdcm/lib \
+    -o $(OUTPUT_BINPATH)/demo_laplaciano \
+    src/demo/CL_VINICIUS/laplaciano.cpp src/demo/timer.cpp \
+    -lvisiongl \
+    $(LINUXAMD64_DIRS_LIBS)
 
 LINUXAMD64_DEMO_BENCHMARK_CV = $(CC) $(COMPILER_FLAGS) \
                         -o $(OUTPUT_BINPATH)/demo_$(BENCHMARK_CV_NAME) \
@@ -467,8 +489,17 @@ demobilateral:
 demoarithmeticMean:
 	$(LINUXAMD64_DEMO_ARITHMEAN)
 
-demogeometricMean:
+demogeometricmean:
 	$(LINUXAMD64_DEMO_GEOMEAN)
+
+demoharmonicmean:
+	$(LINUXAMD64_DEMO_HARMONICMEAN)
+
+democharmonicmean:
+	$(LINUXAMD64_DEMO_CONTRAHARMONICMEAN)
+	
+demo_laplaciano:
+	$(LINUXAMD64_DEMO_LAPLACIANO)
 
 democolordeconv:
 	$(LINUXAMD64_DEMO_COLORDECONV)
@@ -600,11 +631,20 @@ rundemobenchmarkclbin:
 rundemobilateral:
 	cd $(OUTPUT_BINPATH); ./demo_bilateral ../images/lena_gray.tif ${STEPS} /tmp
 
-rundemoarithmeticMean:
+rundemoarithmeticmean:
 	cd $(OUTPUT_BINPATH); ./demo_arithmeticMean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noise.pgm /tmp 5
 
 rundemogeometricmean:
-	cd $(OUTPUT_BINPATH); ./demo_geometricMean images/lena_gray.tif /tmp
+	cd $(OUTPUT_BINPATH); ./demo_geometricMean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noiseSaltPepper.pgm 5
+
+rundemoharmonicmean:
+	cd $(OUTPUT_BINPATH); ./demo_harmonicMean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noise.pgm /tmp  3
+
+rundemolaplaciano:
+	cd $(OUTPUT_BINPATH); ./demo_laplaciano ../images/lena_gray.tif ${STEPS} /tmp
+
+rundemocharmonicmean:
+	cd $(OUTPUT_BINPATH); ./demo_chmean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noiseSaltPepper.pgm  3 -1
 
 rundemocolordeconv:
 	cd $(OUTPUT_BINPATH); ./demo_$(COLORDECONV_NAME) ../images/Emphysema_H_and_E.jpg 1 /tmp/image.%d.pgm 0.0 1.0 1.0 1.0 0.0 1.0 1.0 1.0 0.0

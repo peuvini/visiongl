@@ -8,3 +8,4 @@ bin/
 dox/
 lib/*.so
 include/*.h
+src/demo/CL_VINICIUS/utils

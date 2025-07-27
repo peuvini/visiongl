@@ -1,7 +1,5 @@
 /** 
- * Filtro Bilateral: aplica ponderação espacial e de similaridade (range) para suavização preservando bordas.
- * A função lê a imagem de entrada e escreve a imagem filtrada na saída.
- * Os parâmetros sigma_spatial, sigma_range, window_size_x e window_size_y foram fixados.
+    Bilateral Filter of src image. Result is stored in dst image.
  */
 __kernel void vglClBilateral(__read_only image2d_t img_input,
                              __write_only image2d_t img_output)

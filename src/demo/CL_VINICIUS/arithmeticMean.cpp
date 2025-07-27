@@ -1,10 +1,7 @@
-/******************************************************************************
- * demo_addNoise_and_mean.cpp
- *  - Lê Lena + PGM ruído (0-255)
- *  - Converte para float, centraliza ruído (-127), aplica ganho g
- *  - Salva lenaruido_gray.tif   (1 canal 8-bits)
- *  - Empilha para RGBA, envia p/ OpenCL, filtra média aritmética
- ******************************************************************************/
+/*****************************************************************************
+ * demo_noise_plus_mean.cpp  –  salva todas as fases em /tmp
+ * Uso: ./demo_noise_plus_mean <lena_gray> <noise_pgm> <dir> <win>
+ *****************************************************************************/
 #ifdef __OPENCL__
 
 #include "vglClImage.h"
@@ -23,15 +20,7 @@
 #include <cstring>
 #include <unistd.h>
 
-/*--------- util Cinza-8U → Cinza-32F --------------------------------------*/
-static IplImage* gray8_to_gray32(IplImage* g8)
-{
-    IplImage* gF = cvCreateImage(cvGetSize(g8), IPL_DEPTH_32F, 1);
-    cvConvertScale(g8, gF, 1.0, 0.0);
-    return gF;
-}
-
-/*--------- empilha Gray-8U → RGBA-8U --------------------------------------*/
+/*--- Gray 8U → RGBA 8U ----------------------------------------------------*/
 static IplImage* gray8_to_rgba8(IplImage* g8)
 {
     IplImage* tmp3 = cvCreateImage(cvGetSize(g8), IPL_DEPTH_8U, 3);
@@ -42,76 +31,92 @@ static IplImage* gray8_to_rgba8(IplImage* g8)
     return tmp4;
 }
 
-int main(int argc,char*argv[])
+int main(int argc, char* argv[])
 {
-    if(argc!=5){
-        printf("Uso: %s <lena_gray> <noise_gray> <out_dir> <janela>\n",argv[0]);
+    if (argc != 5) {
+        printf("Uso: %s <lena_gray.tif> <noise.pgm> <_ignorado_> <win>\n", argv[0]);
         return 1;
     }
-    const char* lenaPath=argv[1];
-    const char* noisePath=argv[2];
-    const char* outDir=argv[3];
-    int win=atoi(argv[4]); if(win%2==0||win<1){fprintf(stderr,"janela ímpar!\n");return 1;}
+    const char* lenaPath  = argv[1];
+    const char* noisePath = argv[2];
+    int win = std::atoi(argv[4]);
+    if (win % 2 == 0 || win < 1) {
+        fprintf(stderr,"Janela deve ser ímpar.\n");
+        return 1;
+    }
 
-    /*--- 1. carrega 8-bits gray -------------------------------------------*/
-    IplImage* lena8=cvLoadImage(lenaPath ,CV_LOAD_IMAGE_GRAYSCALE);
-    IplImage* noise8=cvLoadImage(noisePath,CV_LOAD_IMAGE_GRAYSCALE);
-    if(!lena8||!noise8){fprintf(stderr,"Falha ao carregar.\n");return 1;}
+    /*------------------------------------------------------------------*
+     * 1. Carrega Lena e ruído (8U)                                     *
+     *------------------------------------------------------------------*/
+    IplImage* lena8  = cvLoadImage(lenaPath , CV_LOAD_IMAGE_GRAYSCALE);
+    IplImage* noise8 = cvLoadImage(noisePath, CV_LOAD_IMAGE_GRAYSCALE);
+    if (!lena8 || !noise8) { fprintf(stderr,"Falha ao carregar.\n"); return 1; }
 
-    /*--- 2. converte p/ float e centraliza ruído ---------------------------*/
-    IplImage* lenaF  = gray8_to_gray32(lena8);
-    IplImage* noiseF = gray8_to_gray32(noise8);
+    cvSaveImage("/tmp/gray_in_img.tif", lena8);
+    cvSaveImage("/tmp/noise_in_img.pgm",  noise8);
 
-    const float gain = 20.0f;          // ajuste a intensidade: 10-30 típico
-    cvAddS(noiseF, cvScalar(-127.0), noiseF);  // média 0
-    cvConvertScale(noiseF, noiseF, gain/127.0, 0.0);
+    /*------------------------------------------------------------------*
+     * 2. Soma em float (32F) sem saturação                              *
+     *------------------------------------------------------------------*/
+    CvSize sz = cvGetSize(lena8);
 
-    /*--- 3. soma em float ---------------------------------------------------*/
-    IplImage* sumF = cvCreateImage(cvGetSize(lenaF), IPL_DEPTH_32F, 1);
-    cvAdd(lenaF, noiseF, sumF);
-    cvReleaseImage(&lenaF); cvReleaseImage(&noiseF);
+    IplImage* lenaF  = cvCreateImage(sz, IPL_DEPTH_32F, 1);
+    cvConvertScale(lena8, lenaF, 1.0, 0.0);            // 8U → 32F
 
-    /*--- 4. clip 0-255 e volta p/ 8-bits -----------------------------------*/
-    IplImage* sum8 = cvCreateImage(cvGetSize(sumF), IPL_DEPTH_8U, 1);
-    cvConvertScale(sumF, sum8, 1.0, 0.0);
+    IplImage* noiseF = cvCreateImage(sz, IPL_DEPTH_32F, 1);
+    cvConvertScale(noise8, noiseF, 1.0, -128.0);       // centraliza média 0
+
+    IplImage* sumF   = cvCreateImage(sz, IPL_DEPTH_32F, 1);
+    cvAdd(lenaF, noiseF, sumF, nullptr);
+
+    IplImage* sum8   = cvCreateImage(sz, IPL_DEPTH_8U, 1);
+    cvConvertScale(sumF, sum8, 1.0, 0.0);              // clamp 0-255
+    cvSaveImage("/tmp/ruido_gray.tif", sum8);
+
+    /* libera temporários float */
+    cvReleaseImage(&lenaF);
+    cvReleaseImage(&noiseF);
     cvReleaseImage(&sumF);
 
-    char noisyGray[256]; snprintf(noisyGray,sizeof(noisyGray),"%s/lenaruido_gray.tif",outDir);
-    cvSaveImage(noisyGray, sum8);
-    printf("Salvo %s (cinza com ruído)\n", noisyGray);
+    /*------------------------------------------------------------------*
+     * 3. Empilha RGBA e salva                                          *
+     *------------------------------------------------------------------*/
+    IplImage* rgba8 = gray8_to_rgba8(sum8);
 
-    /*=======================================================================*
-     *  PARTE OpenCL  (empilha RGBA 8-bits → média aritmética)               *
-     *=======================================================================*/
+    /*------------------------------------------------------------------*
+     * 4. OpenCL – filtro média aritmética                               *
+     *------------------------------------------------------------------*/
     vglClInit();
 
-    IplImage* sumRGBA = gray8_to_rgba8(sum8);             // agora 4 canais
-    cvSaveImage((std::string(outDir)+"/lena_ruido_rgba.tif").c_str(), sumRGBA);
+    char tmpN[] = "/tmp/vgl_tmpXXXXXX.tif";
+    int fd = mkstemps(tmpN, 4); close(fd);
+    cvSaveImage(tmpN, rgba8);
 
-    /* usa arquivo tmp para garantir VglImage correto */
-    char tmpN[]="/tmp/vgl_tempXXXXXX.tif"; int fd=mkstemps(tmpN,4); close(fd);
-    cvSaveImage(tmpN,sumRGBA);
-
-    VglImage* vSum  = vglLoadImage(tmpN,CV_LOAD_IMAGE_UNCHANGED,0);
+    VglImage* vSum  = vglLoadImage(tmpN, CV_LOAD_IMAGE_UNCHANGED, 0);
     VglImage* vMean = vglCreateImage(vSum);
-    vglClUpload(vSum); vglClUpload(vMean);
+    vglClUpload(vSum);
+    vglClUpload(vMean);
 
-    vglClArithmeticMean(vSum,vMean,win);
+    vglClArithmeticMean(vSum, vMean, win);
     vglClFlush();
 
-    vglSetContext(vMean,VGL_CL_CONTEXT);
+    vglSetContext(vMean, VGL_CL_CONTEXT);
     vglClDownload(vMean);
+    cvSaveImage("/tmp/result_ArithMean.tif", vMean->ipl);
 
-    char outMean[256]; snprintf(outMean,sizeof(outMean),"%s/result_mean.tif",outDir);
-    cvSaveImage(outMean, vMean->ipl);
-    printf("Salvo %s (suavizado)\n", outMean);
-
-    /* limpeza */
-    vglReleaseImage(&vSum); vglReleaseImage(&vMean);
-    cvReleaseImage(&lena8); cvReleaseImage(&noise8);
-    cvReleaseImage(&sum8);  cvReleaseImage(&sumRGBA);
+    /*------------------------------------------------------------------*
+     * 5. Limpeza                                                       *
+     *------------------------------------------------------------------*/
+    vglReleaseImage(&vSum);
+    vglReleaseImage(&vMean);
+    cvReleaseImage(&lena8);
+    cvReleaseImage(&noise8);
+    cvReleaseImage(&sum8);
+    cvReleaseImage(&rgba8);
     unlink(tmpN);
     vglClFlush();
+
+    printf("Todas as imagens foram gravadas em /tmp\n");
     return 0;
 }
 #endif /* __OPENCL__ */
