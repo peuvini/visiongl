@@ -1,5 +1,6 @@
 /** Arithmetic mean of src image. Result is stored in dst image.
  */
+ //SCALAR win
 __kernel void vglClArithmeticMean(__read_only  image2d_t img_input,
                                   __write_only image2d_t img_output,
                                   int          win)

@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
     VglImage* vOut = vglCreateImage(vIn);
     vglClUpload(vIn); vglClUpload(vOut);
 
-    vglClGeometricMean(vIn, vOut, win);   // <-- agora win existe
+    vglClGeometricMean(vIn, vOut, win);  
     vglClFlush();
 
     vglSetContext(vOut, VGL_CL_CONTEXT);

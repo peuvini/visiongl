@@ -47,7 +47,7 @@ OUTPUT_LIBDIR      = -L $(OUTPUT_LIBPATH)
 WITH_CUDA = 0
 WITH_OPENCL = 1
 WITH_OPENCV = 1
-WITH_GDCM = 0
+WITH_GDCM = 1
 WITH_DCMTK = 1
 WITH_TIFF = 1
 
@@ -340,7 +340,6 @@ ifeq ($(WITH_OPENCL), 1)
                          $(LINUXAMD64_DIRS_LIBS) \
 
 endif
-# rodar sudo cp lib/libvisiongl.so /usr/local/lib/
 
 LINUXAMD64_DEMO_BILATERAL = $(CC) $(COMPILER_FLAGS) \
     -Wl,-rpath,$(abspath ./lib) -Wl,-rpath,/usr/local/gdcm/lib \
@@ -638,13 +637,12 @@ rundemogeometricmean:
 	cd $(OUTPUT_BINPATH); ./demo_geometricMean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noiseSaltPepper.pgm 5
 
 rundemoharmonicmean:
-	cd $(OUTPUT_BINPATH); ./demo_harmonicMean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noise.pgm /tmp  3
-
+	cd $(OUTPUT_BINPATH); ./demo_harmonicMean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noiseSaltPepper.pgm /tmp  3
 rundemolaplaciano:
 	cd $(OUTPUT_BINPATH); ./demo_laplaciano ../images/lena_gray.tif ${STEPS} /tmp
 
 rundemocharmonicmean:
-	cd $(OUTPUT_BINPATH); ./demo_chmean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noiseSaltPepper.pgm  3 -1
+	cd $(OUTPUT_BINPATH); ./demo_chmean ../images/lena_gray.tif ../src/demo/CL_VINICIUS/utils/noiseSaltPepper.pgm  3 0
 
 rundemocolordeconv:
 	cd $(OUTPUT_BINPATH); ./demo_$(COLORDECONV_NAME) ../images/Emphysema_H_and_E.jpg 1 /tmp/image.%d.pgm 0.0 1.0 1.0 1.0 0.0 1.0 1.0 1.0 0.0
